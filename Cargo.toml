@@ -1,8 +1,8 @@
 [package]
 name = "num-prime"
 version = "0.4.4"
-edition = "2018"
-
+edition = "2024"
+rust-version = "1.93"
 repository = "https://github.com/cmpute/num-prime"
 keywords = ["mathematics", "primes", "number-theory", "bigint", "num"]
 categories = ["cryptography", "science", "algorithms"]
@@ -13,26 +13,19 @@ Generic and optimized primality test, factorization and various number theoretic
 """
 readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-num-integer = "0.1.44"
-num-traits = "0.2.14"
-num-modular = "0.5.0"
-bitvec = "1.0.0"
-rand = "0.8.4"
-lru = "0.12.2"
-either = "1.6.1"
-
-[dependencies.num-bigint]
-optional = true
-version = "0.4.3"
-features = ["rand"]
+num-integer = { workspace = true }
+num-traits = { workspace = true }
+num-modular = { workspace = true }
+bitvec = { workspace = true }
+rand = { workspace = true }
+lru = { workspace = true }
+either = { workspace = true }
+num-bigint = { workspace = true, features = ["rand"], optional = true }
 
 [features]
 default = ['big-table', 'big-int']
 big-table = []
-# TODO: use the new cargo feature to override the num-bigint option
 big-int = ['num-bigint', 'num-modular/num-bigint']
 
 [workspace]
@@ -40,5 +33,39 @@ members = [
   "bench",
 ]
 
+[workspace.package]
+edition = "2024"
+rust-version = "1.93"
+
+[workspace.dependencies]
+# Internal crates
+num-prime = { path = ".", version = "0.4.4" }
+
+# External dependencies
+num-integer = "0.1.46"
+num-traits = "0.2.19"
+num-modular = "0.6.1"
+bitvec = "1.0.1"
+rand = "0.10.0"
+lru = "0.16.3"
+either = "1.15.0"
+num-bigint = { version = "0.4.6", default-features = false }
+criterion = "0.8"
+num-primes = "0.3.0"
+primal-check = "0.3.4"
+number-theory = "0.0.26"
+is_prime = "2.0.9"
+glass_pumpkin = "1.9.0"
+
 [package.metadata.docs.rs]
 all-features = true
+
+[patch.crates-io]
+num-integer = { git = "https://github.com/earthlings-dev/num-integer.git" }
+num-modular = { git = "https://github.com/earthlings-dev/num-modular.git" }
+rand = { git = "https://github.com/earthlings-dev/rand.git" }
+rand_core = { git = "https://github.com/earthlings-dev/rand_core.git" }
+num-bigint = { git = "https://github.com/earthlings-dev/num-bigint.git" }
+serde = { git = "https://github.com/earthlings-dev/serde.git" }
+serde_core = { git = "https://github.com/earthlings-dev/serde.git" }
+serde_derive = { git = "https://github.com/earthlings-dev/serde.git" }

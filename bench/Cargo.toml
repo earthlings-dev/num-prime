@@ -2,23 +2,24 @@
 name = "num-prime-bench"
 version = "0.0.0"
 publish = false
-edition = "2018"
+edition.workspace = true
+rust-version.workspace = true
 
 [[bench]]
 name = "bench"
 harness = false
 
 [dependencies]
-num-bigint = "0.4"
-num-prime = { path = ".." }
-criterion = "0.3"
-rand = "0.8"
+num-bigint = { workspace = true }
+num-prime = { workspace = true }
+criterion = { workspace = true }
+rand = { workspace = true }
 
-num-primes = { version = "0.3.0", optional = true }
-primal-check = "0.3.1"
-number-theory = "0.0.6"
-is_prime = "2.0.7"
-glass_pumpkin = "1.2.0"
+num-primes = { workspace = true, optional = true }
+primal-check = { workspace = true }
+number-theory = { workspace = true }
+is_prime = { workspace = true }
+glass_pumpkin = { workspace = true }
 
 [features]
 default = ["num-primes"]

@@ -42,10 +42,10 @@ where
     let mut result = BTreeMap::new();
     let mut factored = false;
     for (p, pt) in primes.map(|p| (p, T::from_u64(p).unwrap())) {
-        if &pt > &tsqrt {
+        if pt > tsqrt {
             factored = true;
         }
-        if &pt > &limit {
+        if pt > limit {
             break;
         }
 
@@ -98,14 +98,14 @@ where
 
     while i < max_iter {
         i += 1;
-        a = a.sqm(&target).addm(&offset, &target);
+        a = a.sqm(target).addm(&offset, target);
         if a == b {
             return (None, i);
         }
 
         // FIXME: optimize abs_diff for montgomery form if we are going to use the abs_diff in the std lib
         let diff = if b > a { &b - &a } else { &a - &b }; // abs_diff
-        z = z.mulm(&diff, &target);
+        z = z.mulm(&diff, target);
         if z.is_zero() {
             // the factor is missed by a combined GCD, do backtracing
             if backtrace {
@@ -163,7 +163,7 @@ where
     for<'r> &'r T: RefNum<T>,
 {
     assert!(
-        &mul_target.is_multiple_of(&target),
+        &mul_target.is_multiple_of(target),
         "mul_target should be multiples of target"
     );
     let rd = Roots::sqrt(&mul_target); // root of k*N
@@ -198,26 +198,26 @@ where
 
     for i in 1..max_iter {
         p = rho(&rd, &p, &mut q, &mut qm1);
-        if i.is_odd() {
-            if let Some(rq) = q.sqrt_exact() {
-                let b = (&rd - &p) / &rq;
-                let mut u = b * &rq + &p;
-                let (mut v, mut vm1) = ((&mul_target - &u * &u) / &rq, rq);
+        if i.is_odd()
+            && let Some(rq) = q.sqrt_exact()
+        {
+            let b = (&rd - &p) / &rq;
+            let mut u = b * &rq + &p;
+            let (mut v, mut vm1) = ((&mul_target - &u * &u) / &rq, rq);
 
-                // backward loop, search ambiguous cycle
-                loop {
-                    let new_u = rho(&rd, &u, &mut v, &mut vm1);
-                    if new_u == u {
-                        break;
-                    } else {
-                        u = new_u
-                    }
+            // backward loop, search ambiguous cycle
+            loop {
+                let new_u = rho(&rd, &u, &mut v, &mut vm1);
+                if new_u == u {
+                    break;
+                } else {
+                    u = new_u
                 }
+            }
 
-                let d = target.gcd(&u);
-                if d > T::one() && &d < target {
-                    return (Some(d), i);
-                }
+            let d = target.gcd(&u);
+            if d > T::one() && &d < target {
+                return (Some(d), i);
             }
         }
     }
@@ -290,7 +290,7 @@ where
     for<'r> &'r T: RefNum<T>,
 {
     assert!(
-        &mul_target.is_multiple_of(&target),
+        &mul_target.is_multiple_of(target),
         "mul_target should be multiples of target"
     );
 
@@ -306,13 +306,13 @@ where
         }
 
         // prevent overflow
-        ikn = if let Some(n) = (&ikn).checked_add(&mul_target) {
+        ikn = if let Some(n) = ikn.checked_add(&mul_target) {
             n
         } else {
             return (None, i);
         }
     }
-    return (None, max_iter);
+    (None, max_iter)
 }
 
 // TODO: ECM, (self initialize) Quadratic sieve, Lehman's Fermat(https://en.wikipedia.org/wiki/Fermat%27s_factorization_method, n_factor_lehman)
@@ -321,8 +321,6 @@ where
 //      https://github.com/zademn/facto-rs/
 //      https://github.com/elmomoilanen/prime-factorization
 //      https://cseweb.ucsd.edu/~ethome/teaching/2022-cse-291-14/
-fn pollard_pp1() {}
-fn williams_pp1() {}
 
 #[cfg(test)]
 mod tests {
@@ -350,7 +348,7 @@ mod tests {
                 MontgomeryInt::new(offset, &target).into(),
                 65536,
             );
-            assert_eq!(expect.0, mint_result.0.map(|v| v.value()));
+            assert_eq!(expect.0, mint_result.0.map(|v: SmallMint<u16>| v.value()));
         }
     }
 
@@ -401,7 +399,7 @@ mod tests {
                 .or(squfof(&n, 5 * n, 40000).0)
                 .or(squfof(&n, 7 * n, 40000).0)
                 .or(squfof(&n, 11 * n, 40000).0);
-            assert!(matches!(d, Some(_)), "{}", n);
+            assert!(d.is_some(), "{}", n);
         }
     }
 

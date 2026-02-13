@@ -3,7 +3,7 @@ use crate::nt_funcs::{is_prime, is_prime64, next_prime};
 use crate::{PrimalityTestConfig, RandPrime};
 #[cfg(feature = "num-bigint")]
 use num_bigint::{BigUint, RandBigInt};
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 macro_rules! impl_randprime_prim {
     ($($T:ty)*) => {$(
@@ -15,7 +15,7 @@ macro_rules! impl_randprime_prim {
                 }
 
                 loop {
-                    let t: $T = self.gen();
+                    let t: $T = self.random();
                     let t = (t >> (<$T>::BITS - bit_size as u32)) | 1; // filter even numbers
                     if is_prime64(t as u64) {
                         break t
@@ -33,7 +33,7 @@ macro_rules! impl_randprime_prim {
                 }
 
                 loop {
-                    let t: $T = self.gen();
+                    let t: $T = self.random();
                     let t = (t >> (<$T>::BITS - bit_size as u32)) | 1 | (1 << (bit_size - 1));
                     if is_prime64(t as u64) {
                         break t
@@ -88,7 +88,7 @@ impl<R: Rng> RandPrime<u128> for R {
         }
 
         loop {
-            let t: u128 = self.gen();
+            let t: u128 = self.random();
             let t = (t >> (u128::BITS - bit_size as u32)) | 1; // filter even numbers
             if is_prime(&SmallMint::from(t), config).probably() {
                 break t;
@@ -106,7 +106,7 @@ impl<R: Rng> RandPrime<u128> for R {
         }
 
         loop {
-            let t: u128 = self.gen();
+            let t: u128 = self.random();
             let t = (t >> (u128::BITS - bit_size as u32)) | 1 | (1 << (bit_size - 1));
             if is_prime(&SmallMint::from(t), config).probably() {
                 break t;
@@ -125,10 +125,10 @@ impl<R: Rng> RandPrime<u128> for R {
             if is_prime(&SmallMint::from(p >> 1), config).probably() {
                 break p;
             }
-            if let Some(p2) = p.checked_mul(2).and_then(|v| v.checked_add(1)) {
-                if is_prime(&p2, config).probably() {
-                    break p2;
-                }
+            if let Some(p2) = p.checked_mul(2).and_then(|v| v.checked_add(1))
+                && is_prime(&p2, config).probably()
+            {
+                break p2;
             }
         }
     }
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn rand_prime() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // test random prime generation for each size
         let p: u8 = rng.gen_prime(8, None);
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn rand_prime_exact() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // test exact size prime generation
         let p: u8 = rng.gen_prime_exact(8, None);
@@ -259,7 +259,7 @@ mod tests {
         let p: u128 = rng.gen_prime_exact(128, None);
         assert!(is_prime(&p, None).probably());
         assert_eq!(p.leading_zeros(), 0);
-        
+
         // test random safe prime generation
         let p: u8 = rng.gen_safe_prime_exact(8);
         assert!(is_safe_prime(&p).probably());

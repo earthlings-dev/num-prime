@@ -1,5 +1,4 @@
 use core::default::Default;
-use std::ops::{BitAnd, BitOr};
 
 use either::Either;
 use num_integer::{Integer, Roots};
@@ -31,43 +30,34 @@ pub enum Primality {
 }
 
 impl Primality {
-    /// Check whether the resule indicates that the number is
+    /// Check whether the result indicates that the number is
     /// (very) probably a prime. Return false only on [Primality::No]
     #[inline(always)]
     pub fn probably(self) -> bool {
-        match self {
-            Primality::No => false,
-            _ => true,
-        }
+        !matches!(self, Primality::No)
     }
-}
 
-impl BitAnd<Primality> for Primality {
-    type Output = Primality;
-
-    /// Combine two primality results by ensuring both numbers are prime
-    fn bitand(self, rhs: Primality) -> Self::Output {
+    /// Combine two primality results by requiring both to be prime.
+    /// Probabilities are multiplied (independent conjunction).
+    pub fn and(self, other: Primality) -> Primality {
         match self {
             Primality::No => Primality::No,
-            Primality::Yes => rhs,
-            Primality::Probable(p) => match rhs {
+            Primality::Yes => other,
+            Primality::Probable(p) => match other {
                 Primality::No => Primality::No,
                 Primality::Yes => Primality::Probable(p),
                 Primality::Probable(p2) => Primality::Probable(p * p2),
             },
         }
     }
-}
 
-impl BitOr<Primality> for Primality {
-    type Output = Primality;
-
-    /// Combine two primality results by ensuring either numbers is prime
-    fn bitor(self, rhs: Primality) -> Self::Output {
+    /// Combine two primality results by requiring either to be prime.
+    /// Probabilities use the inclusion-exclusion principle.
+    pub fn or(self, other: Primality) -> Primality {
         match self {
-            Primality::No => rhs,
+            Primality::No => other,
             Primality::Yes => Primality::Yes,
-            Primality::Probable(p) => match rhs {
+            Primality::Probable(p) => match other {
                 Primality::No => Primality::Probable(p),
                 Primality::Yes => Primality::Yes,
                 Primality::Probable(p2) => Primality::Probable(1. - (1. - p) * (1. - p2)),
@@ -128,10 +118,7 @@ impl PrimalityTestConfig {
         }
     }
 
-    /// Create a configuration for PSW test (base 2 SPRP + Fibonacci test)
-    fn psw() {
-        todo!() // TODO: implement Fibonacci PRP
-    }
+    // TODO: implement PSW test (base 2 SPRP + Fibonacci test)
 }
 
 /// Represents a configuration for integer factorization
@@ -147,12 +134,6 @@ pub struct FactorizationConfig {
 
     /// Number of trials with Pollard's rho method
     pub rho_trials: usize,
-
-    /// Number of trials with Pollard's p-1 method
-    pm1_trials: usize,
-
-    /// Number of trials with William's p+1 method
-    pp1_trials: usize,
 }
 
 impl Default for FactorizationConfig {
@@ -164,8 +145,6 @@ impl Default for FactorizationConfig {
             primality_config: PrimalityTestConfig::default(),
             td_limit: Some(THRESHOLD_DEFAULT_TD),
             rho_trials: 4,
-            pm1_trials: 0,
-            pp1_trials: 0,
         }
     }
 }
@@ -173,9 +152,10 @@ impl Default for FactorizationConfig {
 impl FactorizationConfig {
     /// Same as the default configuration but with strict primality check
     pub fn strict() -> Self {
-        let mut config = Self::default();
-        config.primality_config = PrimalityTestConfig::strict();
-        config
+        Self {
+            primality_config: PrimalityTestConfig::strict(),
+            ..Self::default()
+        }
     }
 }
 

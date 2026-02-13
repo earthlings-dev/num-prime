@@ -12,28 +12,25 @@
 //!
 
 use crate::buffer::{NaiveBuffer, PrimeBufferExt};
-use crate::factor::{one_line, pollard_rho, squfof, SQUFOF_MULTIPLIERS};
+use crate::factor::{SQUFOF_MULTIPLIERS, one_line, pollard_rho, squfof};
 use crate::mint::SmallMint;
 use crate::primality::{PrimalityBase, PrimalityRefBase};
 use crate::tables::{
-    MOEBIUS_ODD, SMALL_PRIMES, SMALL_PRIMES_NEXT, WHEEL_NEXT, WHEEL_PREV,
-    WHEEL_SIZE,
+    MOEBIUS_ODD, SMALL_PRIMES, SMALL_PRIMES_NEXT, WHEEL_NEXT, WHEEL_PREV, WHEEL_SIZE,
 };
 #[cfg(feature = "big-table")]
 use crate::tables::{SMALL_PRIMES_INV, ZETA_LOG_TABLE};
 use crate::traits::{FactorizationConfig, Primality, PrimalityTestConfig, PrimalityUtils};
 use crate::{BitTest, ExactRoots};
 use num_integer::Roots;
-#[cfg(feature = "num-bigint")]
-use num_modular::DivExact;
-use num_modular::{ModularCoreOps, ModularInteger, MontgomeryInt};
+use num_modular::{DivExact, ModularCoreOps, ModularInteger, MontgomeryInt};
 use num_traits::{CheckedAdd, FromPrimitive, Num, RefNum, ToPrimitive};
 use rand::random;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
 #[cfg(feature = "big-table")]
-use crate::tables::{MILLER_RABIN_BASE64, MILLER_RABIN_BASE32};
+use crate::tables::{MILLER_RABIN_BASE32, MILLER_RABIN_BASE64};
 
 /// Fast primality test on a u64 integer. It's based on
 /// deterministic Miller-rabin tests. If target is larger than 2^64 or more
@@ -116,7 +113,7 @@ fn is_prime32_miller(target: u32) -> bool {
     let h = ((h >> 16) ^ h).wrapping_mul(0x45d9f3b);
     let h = ((h >> 16) ^ h) & 255;
     let u = SmallMint::from(target);
-    return u.is_sprp(SmallMint::from(MILLER_RABIN_BASE32[h as usize] as u32));
+    u.is_sprp(SmallMint::from(MILLER_RABIN_BASE32[h as usize] as u32))
 }
 
 // Primality test for u64 with only miller-rabin tests, used during factorization.
@@ -137,7 +134,7 @@ fn is_prime64_miller(target: u64) -> bool {
     let h = ((h >> 32) ^ h).wrapping_mul(0x3335b36945d9f3b);
     let h = ((h >> 32) ^ h) & 16383;
     let b = MILLER_RABIN_BASE64[h as usize];
-    return u.is_sprp((b as u64 & 4095).into()) && u.is_sprp((b as u64 >> 12).into());
+    u.is_sprp((b as u64 & 4095).into()) && u.is_sprp((b as u64 >> 12).into())
 }
 
 /// Fast integer factorization on a u64 target. It's based on a selection of factorization methods.
@@ -207,7 +204,7 @@ pub fn factorize64(target: u64) -> BTreeMap<u64, usize> {
         }
 
         let mut exp: usize = 0;
-        while let Some(q) = residual.div_exact(p, &pinv) {
+        while let Some(q) = DivExact::div_exact(residual, p, &pinv) {
             exp += 1;
             residual = q;
         }
@@ -237,7 +234,7 @@ pub fn factorize64(target: u64) -> BTreeMap<u64, usize> {
 
 // This function factorize all cofactors after some trivial division steps
 pub(crate) fn factorize64_advanced(cofactors: &[(u64, usize)]) -> Vec<(u64, usize)> {
-    let mut todo: Vec<_> = cofactors.iter().cloned().collect();
+    let mut todo: Vec<_> = cofactors.to_vec();
     let mut factored: Vec<(u64, usize)> = Vec::new(); // prime factor, exponent
 
     while let Some((target, exp)) = todo.pop() {
@@ -270,12 +267,10 @@ pub(crate) fn factorize64_advanced(cofactors: &[(u64, usize)]) -> Vec<(u64, usiz
                     let start = MontgomeryInt::new(random::<u64>(), &target);
                     let offset = start.convert(random::<u64>());
                     let max_iter = max_iter_ratio << (target.bits() / 6); // unoptimized heuristic
-                    if let (Some(p), _) = pollard_rho(
-                        &SmallMint::from(target),
-                        start.into(),
-                        offset.into(),
-                        max_iter,
-                    ) {
+                    let target_mint = SmallMint::from(target);
+                    if let (Some(p), _) =
+                        pollard_rho(&target_mint, start.into(), offset.into(), max_iter)
+                    {
                         break p.value();
                     }
                 }
@@ -308,7 +303,7 @@ pub(crate) fn factorize64_advanced(cofactors: &[(u64, usize)]) -> Vec<(u64, usiz
             i += 1;
 
             // increase max iterations after trying all methods
-            if i % NMETHODS == 0 {
+            if i.is_multiple_of(NMETHODS) {
                 max_iter_ratio *= 2;
             }
         };
@@ -360,7 +355,7 @@ pub fn factorize128(target: u128) -> BTreeMap<u128, usize> {
         .skip(1)
     {
         let mut exp: usize = 0;
-        while let Some(q) = residual.div_exact(p, &pinv) {
+        while let Some(q) = DivExact::div_exact(residual, p, &pinv) {
             exp += 1;
             residual = q;
         }
@@ -431,12 +426,10 @@ pub(crate) fn factorize128_advanced(cofactors: &[(u128, usize)]) -> Vec<(u128, u
                     let start = MontgomeryInt::new(random::<u128>(), &target);
                     let offset = start.convert(random::<u128>());
                     let max_iter = max_iter_ratio << (target.bits() / 6); // unoptimized heuristic
-                    if let (Some(p), _) = pollard_rho(
-                        &SmallMint::from(target),
-                        start.into(),
-                        offset.into(),
-                        max_iter,
-                    ) {
+                    let target_mint = SmallMint::from(target);
+                    if let (Some(p), _) =
+                        pollard_rho(&target_mint, start.into(), offset.into(), max_iter)
+                    {
                         break p.value();
                     }
                 }
@@ -469,7 +462,7 @@ pub(crate) fn factorize128_advanced(cofactors: &[(u128, usize)]) -> Vec<(u128, u
             i += 1;
 
             // increase max iterations after trying all methods
-            if i % NMETHODS == 0 {
+            if i.is_multiple_of(NMETHODS) {
                 max_iter_ratio *= 2;
             }
         };
@@ -617,7 +610,7 @@ where
 pub fn moebius_factorized<T>(factors: &BTreeMap<T, usize>) -> i8 {
     if factors.values().any(|exp| exp > &1) {
         0
-    } else if factors.len() % 2 == 0 {
+    } else if factors.len().is_multiple_of(2) {
         1
     } else {
         -1
@@ -640,9 +633,9 @@ where
 ///
 /// # Reference:
 /// - \[1] Dusart, Pierre. "Estimates of Some Functions Over Primes without R.H."
-/// [arxiv:1002.0442](http://arxiv.org/abs/1002.0442). 2010.
+///   [arxiv:1002.0442](http://arxiv.org/abs/1002.0442). 2010.
 /// - \[2] Dusart, Pierre. "Explicit estimates of some functions over primes."
-/// The Ramanujan Journal 45.1 (2018): 227-251.
+///   The Ramanujan Journal 45.1 (2018): 227-251.
 pub fn prime_pi_bounds<T: ToPrimitive + FromPrimitive>(target: &T) -> (T, T) {
     if let Some(x) = target.to_u64() {
         // use existing primes and return exact value
@@ -710,15 +703,15 @@ pub fn prime_pi_bounds<T: ToPrimitive + FromPrimitive>(target: &T) -> (T, T) {
 ///
 /// # Reference:
 /// - \[1] Dusart, Pierre. "Estimates of Some Functions Over Primes without R.H."
-/// arXiv preprint [arXiv:1002.0442](https://arxiv.org/abs/1002.0442) (2010).
+///   arXiv preprint [arXiv:1002.0442](https://arxiv.org/abs/1002.0442) (2010).
 /// - \[2] Rosser, J. Barkley, and Lowell Schoenfeld. "Approximate formulas for some
-/// functions of prime numbers." Illinois Journal of Mathematics 6.1 (1962): 64-94.
+///   functions of prime numbers." Illinois Journal of Mathematics 6.1 (1962): 64-94.
 /// - \[3] Dusart, Pierre. "The k th prime is greater than k (ln k+ ln ln k-1) for k≥ 2."
-/// Mathematics of computation (1999): 411-415.
+///   Mathematics of computation (1999): 411-415.
 /// - \[4] Axler, Christian. ["New Estimates for the nth Prime Number."](https://www.emis.de/journals/JIS/VOL22/Axler/axler17.pdf)
-/// Journal of Integer Sequences 22.2 (2019): 3.
+///   Journal of Integer Sequences 22.2 (2019): 3.
 /// - \[5] Axler, Christian. [Uber die Primzahl-Zählfunktion, die n-te Primzahl und verallgemeinerte Ramanujan-Primzahlen. Diss.](http://docserv.uniduesseldorf.de/servlets/DerivateServlet/Derivate-28284/pdfa-1b.pdf)
-/// PhD thesis, Düsseldorf, 2013.
+///   PhD thesis, Düsseldorf, 2013.
 ///
 /// Note that some of the results might depend on the Riemann Hypothesis. If you find
 /// any prime that doesn't fall in the bound, then it might be a big discovery!
@@ -811,7 +804,7 @@ where
 
     // and then test target itself
     let target_p = buf.is_prime(target, config);
-    target_p & sophie_p
+    target_p.and(sophie_p)
 }
 
 /// Find the first prime number larger than `target`. If the result causes an overflow,
@@ -971,12 +964,12 @@ pub fn prime_pi_est<T: Num + ToPrimitive + FromPrimitive>(target: &T) -> T {
 #[cfg(feature = "big-table")]
 pub fn prime_pi_est<T: ToPrimitive + FromPrimitive>(target: &T) -> T {
     // shortcut
-    if let Some(x) = target.to_u16() {
-        if x <= (*SMALL_PRIMES.last().unwrap()) as u16 {
-            let (lo, hi) = prime_pi_bounds(&x);
-            debug_assert_eq!(lo, hi);
-            return T::from_u16(lo).unwrap();
-        }
+    if let Some(x) = target.to_u16()
+        && x <= (*SMALL_PRIMES.last().unwrap())
+    {
+        let (lo, hi) = prime_pi_bounds(&x);
+        debug_assert_eq!(lo, hi);
+        return T::from_u16(lo).unwrap();
     }
 
     // Gram expansion with logarithm arithmetics
@@ -1022,7 +1015,7 @@ where
             return Some(x);
         }
     }
-    return Some(lo);
+    Some(lo)
 }
 
 // TODO: More functions
@@ -1036,7 +1029,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{prelude::SliceRandom, random};
+    use rand::{prelude::IndexedRandom, random};
     use std::iter::FromIterator;
 
     #[test]
@@ -1046,7 +1039,7 @@ mod tests {
             assert_eq!(SMALL_PRIMES.contains(&x), is_prime64(x as u64));
         }
         assert!(is_prime64(677));
-        
+
         // from PR #7
         assert!(!is_prime64(9773));
         assert!(!is_prime64(13357));
@@ -1073,7 +1066,7 @@ mod tests {
         assert!(!is_prime64(4100599722623587));
 
         // ensure no factor for 100 random primes
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..100 {
             let x = random();
             if !is_prime64(x) {
@@ -1176,14 +1169,13 @@ mod tests {
             563, 587, 719, 839, 863, 887, 983, 1019, 1187, 1283, 1307, 1319, 1367, 1439, 1487,
             1523, 1619, 1823, 1907,
         ];
-        for p in SMALL_PRIMES {
-            let p = p as u16;
+        for &p in &SMALL_PRIMES {
             if p > 1500 {
                 break;
             }
             assert_eq!(
                 is_safe_prime(&p).probably(),
-                safe_primes.iter().find(|&v| &p == v).is_some()
+                safe_primes.iter().any(|v| &p == v)
             );
         }
     }
@@ -1194,8 +1186,8 @@ mod tests {
         let mu20: [i8; 20] = [
             1, -1, -1, 0, -1, 1, -1, 0, 0, 1, -1, 0, -1, 1, 1, 0, -1, 0, -1, 0,
         ];
-        for i in 0..20 {
-            assert_eq!(moebius(&(i + 1)), mu20[i], "moebius on {}", i);
+        for (i, &expected) in mu20.iter().enumerate() {
+            assert_eq!(moebius(&(i + 1)), expected, "moebius on {}", i);
         }
 
         // some square numbers
@@ -1207,15 +1199,15 @@ mod tests {
             30, 42, 66, 70, 78, 102, 105, 110, 114, 130, 138, 154, 165, 170, 174, 182, 186, 190,
             195, 222,
         ]; // OEIS:A007304
-        for i in 0..20 {
-            assert_eq!(moebius(&sphenic3[i]), -1i8, "moebius on {}", sphenic3[i]);
+        for n in &sphenic3 {
+            assert_eq!(moebius(n), -1i8, "moebius on {}", n);
         }
         let sphenic5: [u16; 23] = [
             2310, 2730, 3570, 3990, 4290, 4830, 5610, 6006, 6090, 6270, 6510, 6630, 7410, 7590,
             7770, 7854, 8610, 8778, 8970, 9030, 9282, 9570, 9690,
         ]; // OEIS:A046387
-        for i in 0..20 {
-            assert_eq!(moebius(&sphenic5[i]), -1i8, "moebius on {}", sphenic5[i]);
+        for n in sphenic5.iter().take(20) {
+            assert_eq!(moebius(n), -1i8, "moebius on {}", n);
         }
     }
 
@@ -1291,7 +1283,7 @@ mod tests {
         // test with sieved primes
         let mut pb = NaiveBuffer::new();
         for (i, p) in pb.primes(100000).cloned().enumerate() {
-            check(i as u64 + 1, p as u64);
+            check(i as u64 + 1, p);
         }
 
         // test with some known cases with input as 10^n, OEIS:A006988

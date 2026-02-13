@@ -94,15 +94,7 @@ impl<T: Integer + Clone, R: Reducer<T>> Eq for Mint<T, R> {}
 
 impl<T: Integer + Clone, R: Reducer<T> + Clone> PartialOrd for Mint<T, R> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (&self.0, &other.0) {
-            (Left(v1), Left(v2)) => v1.partial_cmp(v2),
-            (Left(v1), Right(v2)) => v1.partial_cmp(&v2.residue()),
-            (Right(v1), Left(v2)) => v1.residue().partial_cmp(v2),
-            (Right(v1), Right(v2)) => {
-                debug_assert!(v1.modulus() == v2.modulus());
-                v1.residue().partial_cmp(&v2.residue())
-            }
-        }
+        Some(self.cmp(other))
     }
 }
 impl<T: Integer + Clone, R: Reducer<T> + Clone> Ord for Mint<T, R> {
@@ -180,12 +172,8 @@ macro_rules! forward_binops_right {
                 })
             }
         }
-        impl<
-                'a,
-                'b,
-                T: Integer + Clone + for<'r> $imp<&'r T, Output = T>,
-                R: Reducer<T> + Clone,
-            > $imp<&'b Mint<T, R>> for &'a Mint<T, R>
+        impl<'a, 'b, T: Integer + Clone + for<'r> $imp<&'r T, Output = T>, R: Reducer<T> + Clone>
+            $imp<&'b Mint<T, R>> for &'a Mint<T, R>
         {
             type Output = Mint<T, R>;
             #[inline]
@@ -239,8 +227,8 @@ impl<T: Integer + Clone, R: Reducer<T>> Div<Mint<T, R>> for &Mint<T, R> {
         }
     }
 }
-impl<'a, 'b, T: Integer + Clone + for<'r> Div<&'r T, Output = T>, R: Reducer<T>> Div<&'b Mint<T, R>>
-    for &'a Mint<T, R>
+impl<T: Integer + Clone + for<'r> Div<&'r T, Output = T>, R: Reducer<T>> Div<&Mint<T, R>>
+    for &Mint<T, R>
 {
     type Output = Mint<T, R>;
     #[inline]
@@ -297,7 +285,7 @@ impl<T: Integer + Clone, R: Reducer<T> + Clone> Rem<Mint<T, R>> for &Mint<T, R> 
         }
     }
 }
-impl<'a, 'b, T: Integer + Clone, R: Reducer<T> + Clone> Rem<&'b Mint<T, R>> for &'a Mint<T, R> {
+impl<T: Integer + Clone, R: Reducer<T> + Clone> Rem<&Mint<T, R>> for &Mint<T, R> {
     type Output = Mint<T, R>;
 
     #[inline]
@@ -518,8 +506,8 @@ impl<T: Integer + Clone, R: Reducer<T> + Clone> ModularCoreOps<&Self, &Self> for
         }
     }
 }
-impl<'a, 'b, T: Integer + Clone, R: Reducer<T> + Clone>
-    ModularCoreOps<&'b Mint<T, R>, &'b Mint<T, R>> for &'a Mint<T, R>
+impl<'b, T: Integer + Clone, R: Reducer<T> + Clone> ModularCoreOps<&'b Mint<T, R>, &'b Mint<T, R>>
+    for &Mint<T, R>
 {
     type Output = Mint<T, R>;
     #[inline]
@@ -593,9 +581,7 @@ impl<T: Integer + Clone, R: Reducer<T> + Clone> ModularUnaryOps<&Self> for Mint<
         }))
     }
 }
-impl<'a, 'b, T: Integer + Clone, R: Reducer<T> + Clone> ModularUnaryOps<&'b Mint<T, R>>
-    for &'a Mint<T, R>
-{
+impl<T: Integer + Clone, R: Reducer<T> + Clone> ModularUnaryOps<&Mint<T, R>> for &Mint<T, R> {
     type Output = Mint<T, R>;
     #[inline]
     fn negm(self, m: &Mint<T, R>) -> Self::Output {
@@ -669,17 +655,17 @@ impl<T: Integer + Clone, R: Reducer<T> + Clone> ModularPow<&Self, &Self> for Min
     #[inline]
     fn powm(self, exp: &Self, m: &Self) -> Self::Output {
         Self(Right(match (self.0, &exp.0, &m.0) {
-            (Left(v), Left(e), Left(m)) => ReducedInt::new(v, m).pow(e.clone()),
+            (Left(v), Left(e), Left(m)) => ReducedInt::new(v, m).pow(e),
             (Right(v), Left(e), Left(m)) => {
                 debug_assert!(&v.modulus() == m);
-                v.pow(e.clone())
+                v.pow(e)
             }
             (_, _, _) => unreachable!(),
         }))
     }
 }
 
-pub type SmallMint<T> = Mint<T, Montgomery<T, T>>;
+pub type SmallMint<T> = Mint<T, Montgomery<T>>;
 
 #[cfg(test)]
 mod tests {

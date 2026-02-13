@@ -87,7 +87,7 @@ where
         let mut neg = false;
         loop {
             // check if n is a square number after several trials
-            if &d == &T::from_u8(13).unwrap() && (*n).is_square() {
+            if d == T::from_u8(13).unwrap() && (*n).is_square() {
                 break (0, 0);
             }
 
@@ -356,16 +356,16 @@ pub trait PrimalityBase:
 {
 }
 impl<
-        T: Integer
-            + Roots
-            + NumRef
-            + Clone
-            + FromPrimitive
-            + ToPrimitive
-            + ExactRoots
-            + BitTest
-            + ModularRefOps,
-    > PrimalityBase for T
+    T: Integer
+        + Roots
+        + NumRef
+        + Clone
+        + FromPrimitive
+        + ToPrimitive
+        + ExactRoots
+        + BitTest
+        + ModularRefOps,
+> PrimalityBase for T
 {
 }
 
@@ -458,14 +458,14 @@ mod tests {
             2600190307441,
         ];
         let m = random::<u16>();
-        for n in 2..p3qm1.len() {
+        for (n, &expected) in p3qm1.iter().enumerate().skip(2) {
             let (uk, _) = LucasUtils::lucasm(3, -1, m as u64, n as u64);
-            assert_eq!(uk, p3qm1[n] % (m as u64));
+            assert_eq!(uk, expected % (m as u64));
 
             #[cfg(feature = "num-bigint")]
             {
                 let (uk, _) = LucasUtils::lucasm(3, -1, BigUint::from(m), BigUint::from(n));
-                assert_eq!(uk, BigUint::from(p3qm1[n] % (m as u64)));
+                assert_eq!(uk, BigUint::from(expected % (m as u64)));
             }
         }
 
@@ -581,7 +581,7 @@ mod tests {
             if n <= 3 || (n.is_sprp(2) && n.is_sprp(3)) {
                 continue;
             } // skip real primes
-            if lpsp.iter().find(|&x| x == &n).is_some() {
+            if lpsp.iter().any(|x| x == &n) {
                 continue;
             } // skip pseudoprimes
             assert!(!n.is_lprp(None, None), "lucas prp test on {}", n);
@@ -601,7 +601,7 @@ mod tests {
             if n <= 3 || (n.is_sprp(2) && n.is_sprp(3)) {
                 continue;
             } // skip real primes
-            if slpsp.iter().find(|&x| x == &n).is_some() {
+            if slpsp.iter().any(|x| x == &n) {
                 continue;
             } // skip pseudoprimes
             assert!(!n.is_slprp(None, None), "strong lucas prp test on {}", n);
@@ -621,7 +621,7 @@ mod tests {
             if n <= 3 || (n.is_sprp(2) && n.is_sprp(3)) {
                 continue;
             } // skip real primes
-            if eslpsp.iter().find(|&x| x == &n).is_some() {
+            if eslpsp.iter().any(|x| x == &n) {
                 continue;
             } // skip pseudoprimes
             assert!(!n.is_eslprp(None), "extra strong lucas prp test on {}", n);

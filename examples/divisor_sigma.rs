@@ -3,7 +3,7 @@ use num_prime::nt_funcs::factorize64;
 /// Return all divisors of the target
 fn divisors(target: u64) -> Vec<u64> {
     let factors = factorize64(target);
-    let mut result = Vec::with_capacity(factors.iter().map(|(_, e)| e + 1).product());
+    let mut result = Vec::with_capacity(factors.values().map(|e| e + 1).product());
     result.push(1);
 
     for (p, e) in factors {

@@ -34,11 +34,11 @@ impl BitTest for BigUint {
         self.bit(position as u64)
     }
     fn bits(&self) -> usize {
-        BigUint::bits(&self) as usize
+        BigUint::bits(self) as usize
     }
     #[inline]
     fn trailing_zeros(&self) -> usize {
-        match BigUint::trailing_zeros(&self) {
+        match BigUint::trailing_zeros(self) {
             Some(a) => a as usize,
             None => 0,
         }
@@ -114,7 +114,7 @@ impl ExactRoots for BigUint {
 
         // check mod 2
         let shift = self.trailing_zeros().unwrap();
-        if shift % 3 != 0 {
+        if !shift.is_multiple_of(3) {
             return None;
         }
 
@@ -155,19 +155,18 @@ impl ExactRoots for BigInt {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand;
 
     #[test]
     fn exact_root_test() {
         // some simple tests
-        assert!(matches!(ExactRoots::sqrt_exact(&3u8), None));
+        assert!(ExactRoots::sqrt_exact(&3u8).is_none());
         assert!(matches!(ExactRoots::sqrt_exact(&4u8), Some(2)));
         assert!(matches!(ExactRoots::sqrt_exact(&9u8), Some(3)));
-        assert!(matches!(ExactRoots::sqrt_exact(&18u8), None));
-        assert!(matches!(ExactRoots::sqrt_exact(&3i8), None));
+        assert!(ExactRoots::sqrt_exact(&18u8).is_none());
+        assert!(ExactRoots::sqrt_exact(&3i8).is_none());
         assert!(matches!(ExactRoots::sqrt_exact(&4i8), Some(2)));
         assert!(matches!(ExactRoots::sqrt_exact(&9i8), Some(3)));
-        assert!(matches!(ExactRoots::sqrt_exact(&18i8), None));
+        assert!(ExactRoots::sqrt_exact(&18i8).is_none());
 
         // test fast implementations of sqrt against nth_root
         for _ in 0..100 {
@@ -206,7 +205,7 @@ mod tests {
         #[cfg(feature = "num-bigint")]
         {
             use num_bigint::RandBigInt;
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             // test fast implementations of sqrt against nth_root
             for _ in 0..10 {
                 let x = rng.gen_biguint(150);
