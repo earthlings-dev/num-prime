@@ -61,11 +61,11 @@ glass_pumpkin = "1.9.0"
 all-features = true
 
 [patch.crates-io]
-num-integer = { git = "https://github.com/earthlings-dev/num-integer.git" }
-num-modular = { git = "https://github.com/earthlings-dev/num-modular.git" }
-rand = { git = "https://github.com/earthlings-dev/rand.git" }
-rand_core = { git = "https://github.com/earthlings-dev/rand_core.git" }
-num-bigint = { git = "https://github.com/earthlings-dev/num-bigint.git" }
-serde = { git = "https://github.com/earthlings-dev/serde.git" }
-serde_core = { git = "https://github.com/earthlings-dev/serde.git" }
-serde_derive = { git = "https://github.com/earthlings-dev/serde.git" }
+num-integer = { path = "../num-integer" }
+num-modular = { path = "../num-modular" }
+rand = { path = "../rand" }
+rand_core = { path = "../rand_core" }
+num-bigint = { path = "../num-bigint" }
+serde = { path = "../serde/serde" }
+serde_core = { path = "../serde/serde_core" }
+serde_derive = { path = "../serde/serde_derive" }
